@@ -183,7 +183,7 @@ function moveSummary() {
 
 function moveHabitIfNeeded() {
   if (isChecked(habitColIndex)) {
-    copyItem(habitColIndex, taskLength)
+    copyItem(habitColIndex, doneIndex)
     incrementTaskCount(habitColIndex)
     uncheck(habitColIndex);
   }
@@ -191,7 +191,7 @@ function moveHabitIfNeeded() {
 
 function moveDailyIfNeeded() {
   if (isChecked(dailyColIndex)) {
-    copyItem(dailyColIndex, taskLength)
+    copyItem(dailyColIndex, doneIndex)
     incrementTaskCount(dailyColIndex)
   }
 }
