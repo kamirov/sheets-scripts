@@ -8,12 +8,18 @@ var priorityDailiesCount = 2
 var priorityTodosCount = 3
 
 
-// Implementation
+// -- Implementation --
 
+// Long Term
+var backlogColIndex = 5   // E
+var soonColIndex = 10     // J
+
+// Today 
 var habitColIndex = 2     // B
 var dailyColIndex = 8     // H
 var todoColIndex = 15     // O
-var doneIndex = 19        // S
+var doneIndex = 19        
+
 
 var taskLength = 3
 
@@ -54,11 +60,20 @@ function onEditLongTerm() {
 }
 
 function moveBacklogIfNeeded() {
+  if (isChecked(backlogColIndex)) {
+    moveItemIfNeeded(backlogColIndex, soonColIndex)
 
+    startRowIndex = 2
+    clearEmptyTasks(startRowIndex, backlogColIndex)
+  }
 }
 
 function moveSoonIfNeeded() {
-
+  if (isChecked(soonColIndex)) {
+    moveItemIfNeeded(soonColIndex, todoColIndex, todaySheet)
+    startRowIndex = 2
+    clearEmptyTasks(startRowIndex, soonColIndex)
+  }
 }
 
 function onEditToday() {
@@ -75,10 +90,10 @@ function handleResetIfNeeded() {
   // Check if the edit is in cell Y2 and the checkbox is checked
   if (editedRow == 2 && editedColumn == 25 && value == "TRUE") { // Column Y is the 25th column
 
-    // moveSummary();
-    // resetDones();
+    moveSummary();
+    resetDones();
     resetTodos();
-    // resetDailes();
+    resetDailes();
 
     sheet.getRange("Y2").uncheck();
   }
@@ -90,28 +105,39 @@ function resetTodos() {
   var topPadding = headerRowsCount + priorityTodosCount + dividerRowsCount
   var firstNonPriorityRowIndex = topPadding + 1 // +1 cause it's 1 indexed
 
-  var rangeBoundaries = "O" + firstNonPriorityRowIndex + ":Q"
-  var todoRange = sheet.getRange(rangeBoundaries);
-  var todoValues = todoRange.getValues();
+  clearEmptyTasks(firstNonPriorityRowIndex, todoColIndex)
+}
+
+function clearEmptyTasks(startRowIndex, startColIndex) {
+  var startColLetter = columnIndexToLetter(startColIndex)
+  var endColLetter = columnIndexToLetter(startColIndex + taskLength-1)
+
+  var rangeBoundaries = startColLetter + startRowIndex + ":" + endColLetter
+
+  var toClearRange = sheet.getRange(rangeBoundaries);
+  var toClearValues = toClearRange.getValues();
   var nonBlankRows = [];
 
   // Collect non-blank rows
-  for (var i = 0; i < todoValues.length; i++) {
-    var todoRow = todoValues[i];
-    var isRowBlank = todoRow.every(function(cell) { return cell === ""; });
+  for (var i = 0; i < toClearValues.length; i++) {
+    var toClearRow = toClearValues[i];
+    var isRowBlank = toClearRow.every(function(cell) { return cell === ""; });
+
     if (!isRowBlank) {
-      nonBlankRows.push(todoRow);
+      nonBlankRows.push(toClearRow);
     }
   }
 
-  var newTodoRangeBoundaries = rangeBoundaries + (topPadding + nonBlankRows.length)
+
+  var topPadding = startRowIndex - 1 // 1 cause of 1-index
+  var newToClearRangeBoundaries = rangeBoundaries + (topPadding + nonBlankRows.length)
 
   // Clear the original range
-  todoRange.clearContent();
+  toClearRange.clearContent();
 
   // Write the non-blank rows back to the sheet starting from N2
   if (nonBlankRows.length > 0) {
-    sheet.getRange(newTodoRangeBoundaries).setValues(nonBlankRows);
+    sheet.getRange(newToClearRangeBoundaries).setValues(nonBlankRows);
   }
 }
 
@@ -187,12 +213,15 @@ function incrementTaskCount(taskIndex) {
 }
 
 function moveTodoIfNeeded() {
-  moveItemIfNeeded(todoColIndex, doneIndex)
+  if (isChecked(todoColIndex)) {
+    moveItemIfNeeded(todoColIndex, doneIndex)
+    resetTodos();
+  }
 }
 
-function moveItemIfNeeded(fromItemColIndex, toItemColIndex) {
+function moveItemIfNeeded(fromItemColIndex, toItemColIndex, toSheet = sheet) {
   if (isChecked(fromItemColIndex)) {
-    copyItem(fromItemColIndex, toItemColIndex)
+    copyItem(fromItemColIndex, toItemColIndex, toSheet)
 
     // Remove old item
     var row = range.getRow();
@@ -213,16 +242,17 @@ function uncheck(taskIndex) {
   sheet.getRange(row, checkBoxIndex).uncheck();
 }
 
-function copyItem(fromItemColIndex, toItemColIndex) {
+function copyItem(fromItemColIndex, toItemColIndex, toSheet = sheet) {
   var taskValues = sheet.getRange(row, fromItemColIndex, 1, taskLength).getValues();
 
-  appendToTaskColumn(toItemColIndex, taskValues);
+  appendToTaskColumn(toItemColIndex, taskValues, toSheet);
 }
 
-function appendToTaskColumn(toItemColIndex, taskValues) {
+function appendToTaskColumn(toItemColIndex, taskValues, toSheet = sheet) {
+  
   // to-column
-  var lastRow = sheet.getLastRow();
-  var toRangeValues = sheet.getRange(1, toItemColIndex, lastRow, taskLength).getValues();
+  var lastRow = toSheet.getLastRow();
+  var toRangeValues = toSheet.getRange(1, toItemColIndex, lastRow, taskLength).getValues();
 
   var lastToRow = lastRow;
   for (var i = toRangeValues.length - 1; i >= 0; i--) {
@@ -238,5 +268,18 @@ function appendToTaskColumn(toItemColIndex, taskValues) {
   }
 
   // Append the task at the bottom of the to-section
-  sheet.getRange(lastToRow, toItemColIndex, 1, taskLength).setValues(taskValues);
+  toSheet.getRange(lastToRow, toItemColIndex, 1, taskLength).setValues(taskValues);
+}
+
+
+// -- Common utility functions --
+
+function columnIndexToLetter(columnIndex) {
+  var temp, letter = '';
+  while (columnIndex > 0) {
+    temp = (columnIndex - 1) % 26;
+    letter = String.fromCharCode(temp + 65) + letter;
+    columnIndex = (columnIndex - temp - 1) / 26;
+  }
+  return letter;
 }
