@@ -3,7 +3,7 @@
 // If you'd like to make use of it, just reach out and I'll spool you up a copy of the Google sheet
 
 // If changing these counts, adjust the coloring for the divider manually in the sheet
-var priorityHabitsCount = 1
+var priorityHabitsCount = 2
 var priorityDailiesCount = 2
 var priorityTodosCount = 3
 
@@ -16,9 +16,10 @@ var soonColIndex = 10     // J
 
 // Today 
 var habitColIndex = 2     // B
-var dailyColIndex = 8     // H
-var todoColIndex = 15     // O
-var doneIndex = 19        
+var regularColIndex = 8   // H
+var dailyColIndex = 15    // O
+var todoColIndex = 22     // V
+var doneIndex = 26        // Z   
 
 
 var taskLength = 3
@@ -78,6 +79,7 @@ function moveSoonIfNeeded() {
 
 function onEditToday() {
   moveHabitIfNeeded();
+  moveRegularIfNeeded();
   moveDailyIfNeeded();
   moveTodoIfNeeded();
   handleResetIfNeeded();
@@ -146,16 +148,15 @@ function resetDones() {
 }
 
 function resetDailes() {
-  // Reset the dailies by unchecking all checkboxes in G2:G
+  // Reset the dailies by unchecking all checkboxes
   var lastRow = sheet.getLastRow(); // Get the last row with content
-  var checkboxesRange = sheet.getRange("G2:G" + lastRow); // Define the range for checkboxes
+  var checkboxesRange = sheet.getRange("N2:N" + lastRow); // Define the range for checkboxes
   checkboxesRange.uncheck(); // Uncheck all checkboxes in the range
 }
 
 function moveSummary() {
-    const summaryRange = sheet.getRange("W2:X2")
+    const summaryRange = sheet.getRange("AD2:AE2")
 
-    // Get values from W2:X2
     var valuesToMove = summaryRange.getValues();
 
     // Calculate yesterday's date
@@ -172,13 +173,13 @@ function moveSummary() {
 
     // Determine the range to shift down - start from A2 to avoid overwriting headers if any
     var lastRow = rewardsSheet.getLastRow();
-    var dateRange = rewardsSheet.getRange("A2:B" + lastRow);
+    var dateRange = rewardsSheet.getRange("A3:B" + lastRow);
 
     // Move existing date data one row down
-    dateRange.copyTo(rewardsSheet.getRange("A3"), {contentsOnly: true});
+    dateRange.copyTo(rewardsSheet.getRange("A4"), {contentsOnly: true});
 
     // Set the values to the top of the list in "Rewards" sheet
-    rewardsSheet.getRange("A2:B2").setValues(valuesToMove);
+    rewardsSheet.getRange("A3:B3").setValues(valuesToMove);
 }
 
 function moveHabitIfNeeded() {
@@ -186,6 +187,14 @@ function moveHabitIfNeeded() {
     copyItem(habitColIndex, doneIndex)
     incrementTaskCount(habitColIndex)
     uncheck(habitColIndex);
+  }
+}
+
+function moveRegularIfNeeded() {
+  if (isChecked(regularColIndex)) {
+    copyItem(regularColIndex, doneIndex)
+    incrementTaskCount(regularColIndex)
+    uncheck(regularColIndex);
   }
 }
 
