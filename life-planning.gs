@@ -7,18 +7,51 @@ var priorityHabitsCount = 1
 var priorityDailiesCount = 2
 var priorityTodosCount = 3
 
+// Sheets
+var todayName = "Today"
+var rewardsName = "Rewards"
+var longTermName = "Long Term"
+
+
+// Titles (Long Term)
+var backlogTitle = 'Backlog'
+var soonTitle = 'Soon'
+
+// Titles (Today)
+var habitTitle = 'Habits'
+var hobbyTitle = 'Hobbies'
+var dailyTitle = 'Dailies'
+var restrictionsTitle = 'Restrictions'
+var todoTitle = 'To Do'
+var doneTitle = 'Done'
+var summaryTitle = 'Summary'
+var doingTitle = 'Doing'
+
+// Titles (Rewards)
+var earningsTitle = 'Earnings'
+
+
 // -- Implementation --
 
+// Sheets
+
+var document = SpreadsheetApp.getActiveSpreadsheet();
+var todaySheet = document.getSheetByName(todayName);
+var rewardsSheet = document.getSheetByName(rewardsName);
+var longTermSheet = document.getSheetByName(longTermName);
+
 // Long Term
-var backlogColIndex = 5   // E
-var soonColIndex = 10     // J
+var backlogColIndex = findColumnIndexInHeader(longTermSheet, backlogTitle)-1
+var soonColIndex = findColumnIndexInHeader(longTermSheet, soonTitle)-1
 
 // Today 
-var habitColIndex = 2     // B
-var regularColIndex = 8   // H
-var dailyColIndex = 15    // O
-var todoColIndex = 22     // V
-var doneIndex = 26        // Z
+var habitColIndex = findColumnIndexInHeader(todaySheet, habitTitle)-1
+var hobbyColIndex = findColumnIndexInHeader(todaySheet, hobbyTitle)-1
+var dailyColIndex = findColumnIndexInHeader(todaySheet, dailyTitle)-1
+var restrictionsColIndex = findColumnIndexInHeader(todaySheet, restrictionsTitle)-1
+var todoColIndex = findColumnIndexInHeader(todaySheet, todoTitle)-1
+var doingColIndex = findColumnIndexInHeader(todaySheet, doingTitle)-1
+var doneIndex = findColumnIndexInHeader(todaySheet, doneTitle)-1
 
 var todoHeaderRowsCount = 1
 var todoDividerRowsCount = 1 
@@ -26,37 +59,32 @@ var todoTopPadding = todoHeaderRowsCount + priorityTodosCount + todoDividerRowsC
 var firstNonPriorityTodoRowIndex = todoTopPadding + 1 // +1 cause it's 1 indexed
 
 // Summary
-var newDayCheckboxA1 = "AE3"
-var randomDailyCheckboxA1 = "AE5"
-var randomRegularCheckboxA1 = "AE6"
-
-// Focus
-var focusProjectA1 = "AF6"
-var focusMultiplier = 3
+var summaryColIndex = findColumnIndexInHeader(todaySheet, summaryTitle)
+var summaryColCheckboxA1 = columnIndexToLetter(summaryColIndex + 1) // Checkbox is the next column
+var newDayCheckboxA1 = `${summaryColCheckboxA1}3`
+var randomHobbyCheckboxA1 = `${summaryColCheckboxA1}5`
+var focusProjectA1 = `${summaryColCheckboxA1}6`
+var focusFactorA1 = `${summaryColCheckboxA1}7`
 
 var taskLength = 3
 
-var todayName = "Today"
-var rewardsName = "Rewards"
-var longTermName = "Long Term"
+// Focus
+var focusMultiplier = todaySheet.getRange(focusFactorA1).getValue()
 
-var document = SpreadsheetApp.getActiveSpreadsheet();
-var todaySheet = document.getSheetByName(todayName);
-var rewardsSheet = document.getSheetByName(rewardsName);
-var longTerm = document.getSheetByName(longTermName);
-
-var sheet;
-var range;
-var value;
-var row
+var globals = {
+  sheet: null,
+  range: null,
+  value: null,
+  row: null
+}
 
 function onEdit(e) {
-  range = e.range;
-  sheet = range.getSheet();
-  value = e.value;
-  row = range.getRow();
+  globals.range = e.range;
+  globals.sheet = globals.range.getSheet();
+  globals.value = e.value;
+  globals.row = globals.range.getRow();
 
-  var sheetName = sheet.getName();
+  var sheetName = globals.sheet.getName();
 
   if (sheetName == todayName) {
     onEditToday();
@@ -89,59 +117,56 @@ function moveSoonIfNeeded() {
   }
 }
 
+
+// TODAY
+
 function onEditToday() {
   moveHabitIfNeeded();
-  moveRegularIfNeeded();
+  moveHobbyIfNeeded();
   moveDailyIfNeeded();
+  moveRestrictionIfNeeded();
   moveTodoIfNeeded();
+  moveDoingIfNeeded();
   handleResetIfNeeded();
 
-  handleRandomDaily();
-  handleRandomRegular();
+  handleRandomHobby();
 }
 
 function handleResetIfNeeded() {
-  var newDayCheckboxRange = sheet.getRange(newDayCheckboxA1)
+  var newDayCheckboxRange = globals.sheet.getRange(newDayCheckboxA1)
 
   if (newDayCheckboxRange.getValue()) {
     moveSummary();
     resetDones();
     resetTodos();
+    resetDoings();
     resetDailes();
+    resetRestrictions();
 
     newDayCheckboxRange.uncheck();
   }
 }
 
-function handleRandomDaily() {
-  var handleRandomDailyRange = sheet.getRange(randomDailyCheckboxA1)
+function handleRandomHobby() {  
+  var handleRandomHobbyRange = globals.sheet.getRange(randomHobbyCheckboxA1)
   
-  if (handleRandomDailyRange.getValue()) {
-    moveDaily(getRandomTaskInRange(dailyColIndex))
-    handleRandomDailyRange.uncheck();
-  }
-}
-
-function handleRandomRegular() {
-  var handleRandomRegularRange = sheet.getRange(randomRegularCheckboxA1)
-  
-  if (handleRandomRegularRange.getValue()) {
-    focusProjectName = sheet.getRange(focusProjectA1).getValue()
-    moveRegular(getRandomTaskInRange(regularColIndex, focusProjectName))
-    handleRandomRegularRange.uncheck();
+  if (handleRandomHobbyRange.getValue()) {
+    focusProjectName = globals.sheet.getRange(focusProjectA1).getValue()
+    moveHobby(getRandomTaskInRange(hobbyColIndex, focusProjectName))
+    handleRandomHobbyRange.uncheck();
   }
 }
 
 function getRandomTaskInRange(taskColIndex, focusProjectName = null) {
-  var lastRow = sheet.getLastRow();
+  var lastRow = globals.sheet.getLastRow();
 
-  var checkboxRange = sheet.getRange(1, taskColIndex-1, lastRow);
+  var checkboxRange = globals.sheet.getRange(1, taskColIndex-1, lastRow);
   var checkboxValues = checkboxRange.getValues();
 
-  var projectRange = sheet.getRange(1, taskColIndex, lastRow);
+  var projectRange = globals.sheet.getRange(1, taskColIndex, lastRow);
   var projectValues = projectRange.getValues();
 
-  var durationRange = sheet.getRange(1, taskColIndex+4, lastRow);
+  var durationRange = globals.sheet.getRange(1, taskColIndex+4, lastRow);
   var durationValues = durationRange.getValues();
 
   // Flatten the 2D array and find indices of all cells with FALSE
@@ -175,13 +200,17 @@ function resetTodos() {
   clearEmptyTasks(firstNonPriorityTodoRowIndex, todoColIndex)
 }
 
+function resetDoings() {
+  clearEmptyTasks(2, doingColIndex)
+}
+
 function clearEmptyTasks(startRowIndex, startColIndex) {
   var startColLetter = columnIndexToLetter(startColIndex)
   var endColLetter = columnIndexToLetter(startColIndex + taskLength-1)
 
   var rangeBoundaries = startColLetter + startRowIndex + ":" + endColLetter
 
-  var toClearRange = sheet.getRange(rangeBoundaries);
+  var toClearRange = globals.sheet.getRange(rangeBoundaries);
   var toClearValues = toClearRange.getValues();
   var nonBlankRows = [];
 
@@ -204,23 +233,43 @@ function clearEmptyTasks(startRowIndex, startColIndex) {
 
   // Write the non-blank rows back to the sheet starting from N2
   if (nonBlankRows.length > 0) {
-    sheet.getRange(newToClearRangeBoundaries).setValues(nonBlankRows);
+    globals.sheet.getRange(newToClearRangeBoundaries).setValues(nonBlankRows);
   }
 }
 
 function resetDones() {
-  sheet.getRange("Z2:AB").clearContent();
+  reset(doneIndex, 'clear')
 }
 
 function resetDailes() {
-  // Reset the dailies by unchecking all checkboxes
-  var lastRow = sheet.getLastRow(); // Get the last row with content
-  var checkboxesRange = sheet.getRange("N2:N" + lastRow); // Define the range for checkboxes
-  checkboxesRange.uncheck(); // Uncheck all checkboxes in the range
+  reset(dailyColIndex, 'check')
+}
+
+function resetRestrictions() {
+  reset(restrictionsColIndex, 'check')
+}
+
+function reset(colIndex, resetType) {
+  const checkboxA1 = columnIndexToLetter(colIndex-1)
+  const startA1 = `${checkboxA1}2`  // 2 to account for header
+  const endA1 = `${checkboxA1}`     // No number, we want all the rows
+
+  var checkboxesRange = globals.sheet.getRange(`${startA1}:${endA1}`); // Define the range for checkboxes
+
+  if (resetType === 'check') {
+    checkboxesRange.uncheck(); // Uncheck all checkboxes in the range
+  } else if (resetType === 'clear') {
+      globals.sheet.getRange(`${startA1}:${endA1}`).clearContent();
+  } else {
+    throw new Error(`Unsupported reset type '${resetType}'`)
+  }
 }
 
 function moveSummary() {
-    const summaryRange = sheet.getRange("AD2:AE2")
+    const summaryRangeStart = `${columnIndexToLetter(summaryColIndex)}2`
+    const summaryRangeEnd = `${summaryColCheckboxA1}2`
+    
+    const summaryRange = globals.sheet.getRange(`${summaryRangeStart}:${summaryRangeEnd}`)
 
     var valuesToMove = summaryRange.getValues();
 
@@ -231,20 +280,24 @@ function moveSummary() {
 
     // Format yesterday's date as a string to match Google Sheets date format
     // Note: Adjust the date format string as per your requirement
-    var formattedDate = Utilities.formatDate(yesterday, Session.getScriptTimeZone(), "EEE, MMM d, yyyy");
+    var formattedDate = Utilities.formatDate(yesterday, Session.getScriptTimeZone(), "yyyy-MM-dd");
 
     // Replace the value in the first cell of valuesToMove with yesterday's date
     valuesToMove[0][0] = formattedDate;
 
+    const earningsColIndex = findColumnIndexInHeader(rewardsSheet, earningsTitle)
+    const earningsColA1 = columnIndexToLetter(earningsColIndex)
+    const earningsEndColA1 = columnIndexToLetter(earningsColIndex + 1)
+
     // Determine the range to shift down - start from A2 to avoid overwriting headers if any
     var lastRow = rewardsSheet.getLastRow();
-    var dateRange = rewardsSheet.getRange("A3:B" + lastRow);
+    var dateRange = rewardsSheet.getRange(`${earningsColA1}3:${earningsEndColA1}${lastRow}`);
 
     // Move existing date data one row down
-    dateRange.copyTo(rewardsSheet.getRange("A4"), {contentsOnly: true});
+    dateRange.copyTo(rewardsSheet.getRange(`${earningsColA1}4`), {contentsOnly: true});
 
     // Set the values to the top of the list in "Rewards" sheet
-    rewardsSheet.getRange("A3:B3").setValues(valuesToMove);
+    rewardsSheet.getRange(`${earningsColA1}3:${earningsEndColA1}3`).setValues(valuesToMove);
 }
 
 function moveHabitIfNeeded() {
@@ -254,21 +307,21 @@ function moveHabitIfNeeded() {
   }
 }
 
-function moveHabit(fromRowIndex = row) {
-    copyItem(fromRowIndex, habitColIndex, todoColIndex, todaySheet, firstNonPriorityTodoRowIndex)
-    incrementTaskCount(regularColIndex, fromRowIndex)
+function moveHabit(fromRowIndex = globals.row) {
+    copyItem(fromRowIndex, habitColIndex, doneIndex, todaySheet, firstNonPriorityTodoRowIndex)
+    incrementTaskCount(hobbyColIndex, fromRowIndex)
 }
 
-function moveRegularIfNeeded() {
-  if (isChecked(regularColIndex)) {
-    moveRegular()
-    uncheck(regularColIndex);
+function moveHobbyIfNeeded() {
+  if (isChecked(hobbyColIndex)) {
+    moveHobby()
+    uncheck(hobbyColIndex);
   }
 }
 
-function moveRegular(fromRowIndex = row) {
-    copyItem(fromRowIndex, regularColIndex, todoColIndex, todaySheet, firstNonPriorityTodoRowIndex)
-    incrementTaskCount(regularColIndex, fromRowIndex)
+function moveHobby(fromRowIndex = globals.row) {
+    copyItem(fromRowIndex, hobbyColIndex, doingColIndex, todaySheet)
+    incrementTaskCount(hobbyColIndex, fromRowIndex)
 }
 
 function moveDailyIfNeeded() {
@@ -277,16 +330,28 @@ function moveDailyIfNeeded() {
   }
 }
 
-function moveDaily(fromRowIndex = row) {
-    copyItem(fromRowIndex, dailyColIndex, todoColIndex, todaySheet, firstNonPriorityTodoRowIndex)
-    incrementTaskCount(dailyColIndex, fromRowIndex)
-
-    sheet.getRange(fromRowIndex, dailyColIndex-1).check()
+function moveRestrictionIfNeeded() {
+  if (isChecked(restrictionsColIndex)) {
+    moveRestriction()
+  }
 }
 
-function incrementTaskCount(taskIndex, fromRowIndex = row) {
+function moveRestriction(fromRowIndex = globals.row) {
+    copyItem(fromRowIndex, restrictionsColIndex, doneIndex, todaySheet)
+    incrementTaskCount(restrictionsColIndex, fromRowIndex)
+
+    globals.sheet.getRange(fromRowIndex, restrictionsColIndex-1).check()
+}
+
+function moveDaily(fromRowIndex = globals.row) {
+    copyItem(fromRowIndex, dailyColIndex, doingColIndex, todaySheet)
+
+    globals.sheet.getRange(fromRowIndex, dailyColIndex-1).check()
+}
+
+function incrementTaskCount(taskIndex, fromRowIndex = globals.row) {
   var incrementColumnIndex = taskIndex + 3;
-  var cell = sheet.getRange(fromRowIndex, incrementColumnIndex);
+  var cell = globals.sheet.getRange(fromRowIndex, incrementColumnIndex);
   var currentValue = cell.getValue();
 
   // Check if the current value is a number and increment it
@@ -300,18 +365,25 @@ function incrementTaskCount(taskIndex, fromRowIndex = row) {
 
 function moveTodoIfNeeded() {
   if (isChecked(todoColIndex)) {
-    moveItemIfNeeded(todoColIndex, doneIndex)
+    moveItemIfNeeded(todoColIndex, doingColIndex)
     resetTodos();
   }
 }
 
-function moveItemIfNeeded(fromItemColIndex, toItemColIndex, toSheet = sheet) {
+function moveDoingIfNeeded() {
+  if (isChecked(doingColIndex)) {
+    moveItemIfNeeded(doingColIndex, doneIndex)
+    resetDoings();
+  }
+}
+
+function moveItemIfNeeded(fromItemColIndex, toItemColIndex, toSheet = globals.sheet) {
   if (isChecked(fromItemColIndex)) {
-    var row = range.getRow();
+    var row = globals.range.getRow();
     copyItem(row, fromItemColIndex, toItemColIndex, toSheet)
 
     // Remove old item
-    sheet.getRange(row, fromItemColIndex, 1, taskLength).clearContent();
+    globals.sheet.getRange(row, fromItemColIndex, 1, taskLength).clearContent();
 
     uncheck(fromItemColIndex);
   }
@@ -320,21 +392,21 @@ function moveItemIfNeeded(fromItemColIndex, toItemColIndex, toSheet = sheet) {
 function isChecked(taskIndex) {
   const checkBoxIndex = taskIndex - 1;
 
-  return range.getColumn() == checkBoxIndex && value == "TRUE"
+  return globals.range.getColumn() == checkBoxIndex && globals.value == "TRUE"
 }
 
 function uncheck(taskIndex) {
   const checkBoxIndex = taskIndex - 1;
-  sheet.getRange(row, checkBoxIndex).uncheck();
+  globals.sheet.getRange(globals.row, checkBoxIndex).uncheck();
 }
 
-function copyItem(fromRowIndex, fromItemColIndex, toItemColIndex, toSheet = sheet, toRowIndex = 1) {
-  var taskValues = sheet.getRange(fromRowIndex, fromItemColIndex, 1, taskLength).getValues();
+function copyItem(fromRowIndex, fromItemColIndex, toItemColIndex, toSheet = globals.sheet, toRowIndex = 1) {
+  var taskValues = globals.sheet.getRange(fromRowIndex, fromItemColIndex, 1, taskLength).getValues();
 
   appendToTaskColumn(toItemColIndex, taskValues, toSheet, toRowIndex);
 }
 
-function appendToTaskColumn(toItemColIndex, taskValues, toSheet = sheet, toRowIndex = 1) {
+function appendToTaskColumn(toItemColIndex, taskValues, toSheet = globals.sheet, toRowIndex = 1) {
   
   // to-column
   var lastRow = toSheet.getLastRow();
@@ -372,4 +444,19 @@ function columnIndexToLetter(columnIndex) {
     columnIndex = (columnIndex - temp - 1) / 26;
   }
   return letter;
+}
+
+function findColumnIndexInHeader(sheet, label) {
+  // Get the first row's values (headers)
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  
+  // Find the index of the given label in the headers array
+  var columnIndex = headers.indexOf(label);
+  
+  // Log the result
+  if (columnIndex === -1) { // indexOf returns -1 if not found, but we added 1 earlier
+    throw new Error("Column '" + label + "' not found.");
+  }
+  
+  return columnIndex + 1 // +1 cause we're 1-indexed
 }
