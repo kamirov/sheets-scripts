@@ -252,14 +252,18 @@ function resetRestrictions() {
 function reset(colIndex, resetType) {
   const checkboxA1 = columnIndexToLetter(colIndex-1)
   const startA1 = `${checkboxA1}2`  // 2 to account for header
-  const endA1 = `${checkboxA1}`     // No number, we want all the rows
-
-  var checkboxesRange = globals.sheet.getRange(`${startA1}:${endA1}`); // Define the range for checkboxes
 
   if (resetType === 'check') {
-    checkboxesRange.uncheck(); // Uncheck all checkboxes in the range
+    const endA1 = `${checkboxA1}`     // No number, we want all the rows
+    var range = globals.sheet.getRange(`${startA1}:${endA1}`); // Define the range for checkboxes
+
+    range.uncheck(); // Uncheck all checkboxes in the range
   } else if (resetType === 'clear') {
-      globals.sheet.getRange(`${startA1}:${endA1}`).clearContent();
+      const endIndex = colIndex + taskLength - 1
+      const endA1 = columnIndexToLetter(endIndex)     // No number, we want all the rows
+      var range = globals.sheet.getRange(`${startA1}:${endA1}`);
+
+      range.clearContent();
   } else {
     throw new Error(`Unsupported reset type '${resetType}'`)
   }
