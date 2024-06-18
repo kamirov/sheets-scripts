@@ -67,7 +67,7 @@ function incrementTaskCount(taskIndex, fromRowIndex = globals.row) {
   }
 }
 
-function reset(colIndex, resetType) {
+function reset(colIndex, resetType, reorder = false) {
   const checkboxA1 = columnIndexToLetter(colIndex-1)
   const startA1 = `${checkboxA1}2`  // 2 to account for header
 
@@ -78,7 +78,8 @@ function reset(colIndex, resetType) {
   
   if (resetType === 'check') {
     // Sort rows by checked status
-    taskRange.sort({column: colIndex-1, ascending: true});
+    if (reorder)
+      taskRange.sort({column: colIndex-1, ascending: true});
 
     const checkBoxrange = globals.sheet.getRange(`${startA1}:${checkboxA1}`); // Define the range for checkboxes
     checkBoxrange.uncheck(); // Uncheck all checkboxes in the range
