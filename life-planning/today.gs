@@ -7,6 +7,7 @@ var priorityTodosCount = 3
 var habitTitle = 'Habits'
 var hobbyTitle = 'Hobbies'
 var dailyTitle = 'Dailies'
+var weeklyTitle = 'Weeklies'
 var restrictionsTitle = 'Restrictions'
 var todoTitle = 'To Do'
 var doneTitle = 'Done'
@@ -17,6 +18,7 @@ var doingTitle = 'Doing'
 var habitColIndex = findColumnIndexInHeader(todaySheet, habitTitle)-1
 var hobbyColIndex = findColumnIndexInHeader(todaySheet, hobbyTitle)-1
 var dailyColIndex = findColumnIndexInHeader(todaySheet, dailyTitle)-1
+var weeklyColIndex = findColumnIndexInHeader(todaySheet, weeklyTitle)-1
 var restrictionsColIndex = findColumnIndexInHeader(todaySheet, restrictionsTitle)-1
 var todoColIndex = findColumnIndexInHeader(todaySheet, todoTitle)-1
 var doingColIndex = findColumnIndexInHeader(todaySheet, doingTitle)-1
@@ -32,6 +34,7 @@ var firstNonPriorityTodoRowIndex = todoTopPadding + 1 // +1 cause it's 1 indexed
 var summaryColIndex = findColumnIndexInHeader(todaySheet, summaryTitle)
 var summaryColCheckboxA1 = columnIndexToLetter(summaryColIndex + 1) // Checkbox is the next column
 var newDayCheckboxA1 = `${summaryColCheckboxA1}3`
+var newWeekCheckboxA1 = `${summaryColCheckboxA1}4`
 var randomHobbyCheckboxA1 = `${summaryColCheckboxA1}5`
 var focusProjectA1 = `${summaryColCheckboxA1}6`
 var focusFactorA1 = `${summaryColCheckboxA1}7`
@@ -39,15 +42,16 @@ var focusFactorA1 = `${summaryColCheckboxA1}7`
 // Focus
 var focusMultiplier = todaySheet.getRange(focusFactorA1).getValue()
 
-
 function onEditToday() {
   moveHabitIfNeeded();
   moveHobbyIfNeeded();
   moveDailyIfNeeded();
+  moveWeeklyIfNeeded();
   moveRestrictionIfNeeded();
   moveTodoIfNeeded();
   moveDoingIfNeeded();
-  handleResetIfNeeded();
+  handleNewDayIfNeeded();
+  handleNewWeekIfNeeded();
 
   handleRandomHobby();
 }
@@ -96,7 +100,7 @@ function moveHabitIfNeeded() {
 }
 
 function moveHabit(fromRowIndex = globals.row) {
-    copyItem(fromRowIndex, habitColIndex, doneColIndex, todaySheet, firstNonPriorityTodoRowIndex)
+    copyItem(fromRowIndex, habitColIndex, doneColIndex, todaySheet)
     incrementTaskCount(hobbyColIndex, fromRowIndex)
 }
 
@@ -115,6 +119,12 @@ function moveHobby(fromRowIndex = globals.row) {
 function moveDailyIfNeeded() {
   if (isChecked(dailyColIndex)) {
     moveDaily()
+  }
+}
+
+function moveWeeklyIfNeeded() {
+  if (isChecked(weeklyColIndex)) {
+    moveWeekly()
   }
 }
 
@@ -137,6 +147,12 @@ function moveDaily(fromRowIndex = globals.row) {
     globals.sheet.getRange(fromRowIndex, dailyColIndex-1).check()
 }
 
+function moveWeekly(fromRowIndex = globals.row) {
+    copyItem(fromRowIndex, weeklyColIndex, doneColIndex, todaySheet)
+
+    globals.sheet.getRange(fromRowIndex, weeklyColIndex-1).check()
+}
+
 function moveTodoIfNeeded() {
   if (isChecked(todoColIndex)) {
     moveItemIfNeeded(todoColIndex, doneColIndex, todaySheet)
@@ -150,7 +166,8 @@ function moveDoingIfNeeded() {
     resetDoings();
   }
 }
-function handleResetIfNeeded() {
+
+function handleNewDayIfNeeded() {
   var newDayCheckboxRange = globals.sheet.getRange(newDayCheckboxA1)
 
   if (newDayCheckboxRange.getValue()) {
@@ -158,10 +175,20 @@ function handleResetIfNeeded() {
     resetDones();
     resetTodos();
     resetDoings();
-    resetDailes();
+    resetDailies();
     resetRestrictions();
 
     newDayCheckboxRange.uncheck();
+  }
+}
+
+function handleNewWeekIfNeeded() {
+  var newWeekCheckboxRange = globals.sheet.getRange(newWeekCheckboxA1)
+
+  if (newWeekCheckboxRange.getValue()) {
+    resetWeeklies();
+
+    newWeekCheckboxRange.uncheck();
   }
 }
 
@@ -187,8 +214,12 @@ function resetDones() {
   reset(doneColIndex, 'clear')
 }
 
-function resetDailes() {
-  reset(dailyColIndex, 'check')
+function resetDailies() {
+  reset(dailyColIndex, 'check', true)
+}
+
+function resetWeeklies() {
+  reset(weeklyColIndex, 'check', false)
 }
 
 function resetRestrictions() {
