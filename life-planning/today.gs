@@ -215,7 +215,7 @@ function resetDones() {
 }
 
 function resetDailies() {
-  reset(dailyColIndex, 'check', true)
+  reset(dailyColIndex, 'check', false)
 }
 
 function resetWeeklies() {
