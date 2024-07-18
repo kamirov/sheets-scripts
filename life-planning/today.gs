@@ -35,12 +35,17 @@ var summaryColIndex = findColumnIndexInHeader(todaySheet, summaryTitle)
 var summaryColCheckboxA1 = columnIndexToLetter(summaryColIndex + 1) // Checkbox is the next column
 var newDayCheckboxA1 = `${summaryColCheckboxA1}3`
 var newWeekCheckboxA1 = `${summaryColCheckboxA1}4`
-var randomHobbyCheckboxA1 = `${summaryColCheckboxA1}5`
-var focusProjectA1 = `${summaryColCheckboxA1}6`
-var focusFactorA1 = `${summaryColCheckboxA1}7`
+
+const breatheToggleCheckboxA1 = `${summaryColCheckboxA1}5`
+const breatheModeEnabled = todaySheet.getRange(breatheToggleCheckboxA1).getValue()
+
+
+// var randomHobbyCheckboxA1 = `${summaryColCheckboxA1}5`
+// var focusProjectA1 = `${summaryColCheckboxA1}6`
+// var focusFactorA1 = `${summaryColCheckboxA1}7`
 
 // Focus
-var focusMultiplier = todaySheet.getRange(focusFactorA1).getValue()
+// var focusMultiplier = todaySheet.getRange(focusFactorA1).getValue()
 
 function onEditToday() {
   moveHabitIfNeeded();
@@ -52,8 +57,20 @@ function onEditToday() {
   moveDoingIfNeeded();
   handleNewDayIfNeeded();
   handleNewWeekIfNeeded();
+  handleBreatheModeToggle()
 
-  handleRandomHobby();
+  // handleRandomHobby();
+}
+
+function handleBreatheModeToggle() {
+  const startHideColIndex = doingColIndex-1 // Accounts for checkbox
+  const endColOffsetFromStart = taskLength + 2 // +1 to offset for checkbox, +1 to include the divider column
+
+  if (breatheModeEnabled) {
+    todaySheet.showColumns(startHideColIndex, endColOffsetFromStart);
+  } else {
+    todaySheet.hideColumns(startHideColIndex, endColOffsetFromStart);
+  }
 }
 
 
@@ -61,7 +78,7 @@ function moveSummary() {
     const summaryRangeStart = `${columnIndexToLetter(summaryColIndex)}2`
     const summaryRangeEnd = `${summaryColCheckboxA1}2`
     
-    const summaryRange = globals.sheet.getRange(`${summaryRangeStart}:${summaryRangeEnd}`)
+    const summaryRange = todaySheet.getRange(`${summaryRangeStart}:${summaryRangeEnd}`)
 
     var valuesToMove = summaryRange.getValues();
 
@@ -138,24 +155,30 @@ function moveRestriction(fromRowIndex = globals.row) {
     copyItem(fromRowIndex, restrictionsColIndex, doneColIndex, todaySheet)
     incrementTaskCount(restrictionsColIndex, fromRowIndex)
 
-    globals.sheet.getRange(fromRowIndex, restrictionsColIndex-1).check()
+    todaySheet.getRange(fromRowIndex, restrictionsColIndex-1).check()
 }
 
 function moveDaily(fromRowIndex = globals.row) {
-    copyItem(fromRowIndex, dailyColIndex, doneColIndex, todaySheet)
+    const destinationColIndex = breatheModeEnabled ? doingColIndex : doneColIndex
 
-    globals.sheet.getRange(fromRowIndex, dailyColIndex-1).check()
+    copyItem(fromRowIndex, dailyColIndex, destinationColIndex, todaySheet)
+
+    todaySheet.getRange(fromRowIndex, dailyColIndex-1).check()
 }
 
 function moveWeekly(fromRowIndex = globals.row) {
-    copyItem(fromRowIndex, weeklyColIndex, doneColIndex, todaySheet)
+    const destinationColIndex = breatheModeEnabled ? doingColIndex : doneColIndex
 
-    globals.sheet.getRange(fromRowIndex, weeklyColIndex-1).check()
+    copyItem(fromRowIndex, weeklyColIndex, destinationColIndex, todaySheet)
+
+    todaySheet.getRange(fromRowIndex, weeklyColIndex-1).check()
 }
 
 function moveTodoIfNeeded() {
   if (isChecked(todoColIndex)) {
-    moveItemIfNeeded(todoColIndex, doneColIndex, todaySheet)
+    const destinationColIndex = breatheModeEnabled ? doingColIndex : doneColIndex
+
+    moveItemIfNeeded(todoColIndex, destinationColIndex, todaySheet)
     resetTodos();
   }
 }
@@ -168,7 +191,7 @@ function moveDoingIfNeeded() {
 }
 
 function handleNewDayIfNeeded() {
-  var newDayCheckboxRange = globals.sheet.getRange(newDayCheckboxA1)
+  var newDayCheckboxRange = todaySheet.getRange(newDayCheckboxA1)
 
   if (newDayCheckboxRange.getValue()) {
     moveSummary();
@@ -183,7 +206,7 @@ function handleNewDayIfNeeded() {
 }
 
 function handleNewWeekIfNeeded() {
-  var newWeekCheckboxRange = globals.sheet.getRange(newWeekCheckboxA1)
+  var newWeekCheckboxRange = todaySheet.getRange(newWeekCheckboxA1)
 
   if (newWeekCheckboxRange.getValue()) {
     resetWeeklies();
@@ -192,15 +215,15 @@ function handleNewWeekIfNeeded() {
   }
 }
 
-function handleRandomHobby() {  
-  var handleRandomHobbyRange = globals.sheet.getRange(randomHobbyCheckboxA1)
+// function handleRandomHobby() {  
+//   var handleRandomHobbyRange = todaySheet.getRange(randomHobbyCheckboxA1)
   
-  if (handleRandomHobbyRange.getValue()) {
-    focusProjectName = globals.sheet.getRange(focusProjectA1).getValue()
-    moveHobby(getRandomTaskInRange(hobbyColIndex, focusProjectName))
-    handleRandomHobbyRange.uncheck();
-  }
-}
+//   if (handleRandomHobbyRange.getValue()) {
+//     focusProjectName = todaySheet.getRange(focusProjectA1).getValue()
+//     moveHobby(getRandomTaskInRange(hobbyColIndex, focusProjectName))
+//     handleRandomHobbyRange.uncheck();
+//   }
+// }
 
 function resetTodos() {
   clearEmptyTasks(firstNonPriorityTodoRowIndex, todoColIndex)
