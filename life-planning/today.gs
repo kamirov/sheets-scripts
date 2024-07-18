@@ -63,13 +63,20 @@ function onEditToday() {
 }
 
 function handleBreatheModeToggle() {
-  const startHideColIndex = doingColIndex-1 // Accounts for checkbox
-  const endColOffsetFromStart = taskLength + 2 // +1 to offset for checkbox, +1 to include the divider column
+  // Doing
+  const startHideDoingColIndex = doingColIndex-1 // Accounts for checkbox
+  const endDoingColOffsetFromStart = taskLength + 2 // +1 to offset for checkbox, +1 to include the divider column
+
+  // Done
+  const startHideDoneColIndex = doneColIndex
+  const endDoneColOffsetFromStart = taskLength + 1 // +1 to include the divider column
 
   if (breatheModeEnabled) {
-    todaySheet.showColumns(startHideColIndex, endColOffsetFromStart);
+    todaySheet.showColumns(startHideDoingColIndex, endDoingColOffsetFromStart);
+    todaySheet.hideColumns(startHideDoneColIndex, endDoneColOffsetFromStart);
   } else {
-    todaySheet.hideColumns(startHideColIndex, endColOffsetFromStart);
+    todaySheet.hideColumns(startHideDoingColIndex, endDoingColOffsetFromStart);
+    todaySheet.showColumns(startHideDoneColIndex, endDoneColOffsetFromStart);
   }
 }
 
